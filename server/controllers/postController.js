@@ -42,6 +42,47 @@ exports.getPosts = async (req, res, next) => {
   }
 };
 
+exports.getPublicPosts = async (req, res, next) => {
+  try {
+    const { tag, search } = req.query;
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 100);
+    const filter = { published: true };
+    if (tag) filter.tags = tag;
+    if (search) {
+      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      filter.$or = [
+        { title: { $regex: escaped, $options: 'i' } },
+        { content: { $regex: escaped, $options: 'i' } },
+      ];
+    }
+    const [posts, total] = await Promise.all([
+      Post.find(filter)
+        .populate('author', 'username')
+        .sort('-createdAt')
+        .skip((page - 1) * limit)
+        .limit(limit),
+      Post.countDocuments(filter),
+    ]);
+    res.json({ posts, total, page, limit, totalPages: Math.ceil(total / limit) });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getPublicPost = async (req, res, next) => {
+  try {
+    const post = await Post.findOne({ slug: req.params.slug, published: true }).populate(
+      'author',
+      'username'
+    );
+    if (!post) return res.status(404).json({ message: 'Post not found' });
+    res.json(post);
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.getPost = async (req, res, next) => {
   try {
     const post = await Post.findOne({ slug: req.params.slug }).populate('author', 'username');
