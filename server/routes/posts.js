@@ -4,10 +4,14 @@ const {
   createPost,
   getPosts,
   getPost,
+  getPublicPosts,
+  getPublicPost,
   updatePost,
   deletePost,
 } = require('../controllers/postController');
 
+router.get('/public', getPublicPosts);
+router.get('/public/:slug', getPublicPost);
 router.get('/', getPosts);
 router.get('/:slug', getPost);
 router.post('/', auth, createPost);
